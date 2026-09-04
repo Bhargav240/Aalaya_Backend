@@ -1,5 +1,7 @@
 //! HTTP layer (Axum). Owns request/response DTOs, middleware, and the single
 //! error boundary. Depends on `application`, never on `infrastructure`.
+#![allow(clippy::too_many_arguments)]
+
 pub mod error;
 pub mod extractors;
 pub mod middleware;

@@ -1,4 +1,6 @@
 //! Adapters: concrete implementations of the application's ports.
+#![allow(clippy::too_many_arguments)]
+
 pub mod auth;
 pub mod billing;
 pub mod config;

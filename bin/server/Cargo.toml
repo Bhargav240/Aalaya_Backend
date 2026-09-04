@@ -1,0 +1,19 @@
+[package]
+name = "pg-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "pg-server"
+path = "src/main.rs"
+
+[dependencies]
+pg-domain = { path = "../../crates/domain" }
+pg-application = { path = "../../crates/application" }
+pg-infrastructure = { path = "../../crates/infrastructure" }
+pg-api = { path = "../../crates/api" }
+tokio = { workspace = true }
+tracing.workspace = true
+anyhow.workspace = true
+axum.workspace = true

@@ -1,0 +1,10 @@
+/target
+**/*.rs.bk
+.env
+*.env.local
+.DS_Store
+.claude/
+.idea/
+*.log
+/supabase/.temp/
+/data/objectstore/receipts/

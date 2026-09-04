@@ -1,0 +1,24 @@
+[package]
+name = "pg-application"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+pg-domain = { path = "../domain" }
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+time.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+sha2.workspace = true
+base64.workspace = true
+tokio = { workspace = true }
+
+[dev-dependencies]
+# In-memory fakes implement the ports; the real billing engine is exercised via
+# pg-infrastructure so money tests verify production logic, not a copied formula.
+pg-infrastructure = { path = "../infrastructure" }
+tokio = { workspace = true, features = ["full", "test-util"] }

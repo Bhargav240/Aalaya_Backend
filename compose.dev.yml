@@ -1,0 +1,41 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hamsa-vilas-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://hamsa:hamsa_dev_password@postgres:5432/hamsa_vilas
+      BIND_ADDR: 0.0.0.0:8080
+      STORAGE_DIR: /app/data/objectstore
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./data/objectstore:/app/data/objectstore
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: hamsa-vilas-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hamsa_vilas
+      POSTGRES_USER: hamsa
+      POSTGRES_PASSWORD: hamsa_dev_password
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - hamsa-vilas-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hamsa -d hamsa_vilas"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  hamsa-vilas-postgres-data:

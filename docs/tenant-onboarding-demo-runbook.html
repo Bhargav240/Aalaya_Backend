@@ -1,0 +1,563 @@
+<title>Tenant Onboarding Runbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    --ground:   #F7F9FB;
+    --surface:  #FFFFFF;
+    --sunken:   #EDF2F6;
+    --ink:      #14202B;
+    --muted:    #5A6B7A;
+    --faint:    #8A9AA8;
+    --line:     #D8E2EA;
+    --line-soft:#E7EEF3;
+    --accent:   #0F6FA8;
+    --accent-sk:#E3F0F8;
+    --ok:       #1E7A54;
+    --ok-sk:    #E2F1EA;
+    --warn:     #A66A00;
+    --warn-sk:  #FBF0DC;
+    --stop:     #B4342A;
+    --stop-sk:  #FAE7E4;
+    --shadow:   0 1px 2px rgba(20,32,43,.06), 0 4px 14px rgba(20,32,43,.05);
+
+    --f-head: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:   #0E161D;
+      --surface:  #16212B;
+      --sunken:   #1D2A35;
+      --ink:      #E6EDF3;
+      --muted:    #A2B2BF;
+      --faint:    #78899A;
+      --line:     #2A3945;
+      --line-soft:#22303B;
+      --accent:   #62B4E2;
+      --accent-sk:#132A38;
+      --ok:       #63C79B;
+      --ok-sk:    #12281F;
+      --warn:     #E0A83C;
+      --warn-sk:  #2B2114;
+      --stop:     #F08579;
+      --stop-sk:  #2E1815;
+      --shadow:   0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.24);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:   #0E161D;
+    --surface:  #16212B;
+    --sunken:   #1D2A35;
+    --ink:      #E6EDF3;
+    --muted:    #A2B2BF;
+    --faint:    #78899A;
+    --line:     #2A3945;
+    --line-soft:#22303B;
+    --accent:   #62B4E2;
+    --accent-sk:#132A38;
+    --ok:       #63C79B;
+    --ok-sk:    #12281F;
+    --warn:     #E0A83C;
+    --warn-sk:  #2B2114;
+    --stop:     #F08579;
+    --stop-sk:  #2E1815;
+    --shadow:   0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.24);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 16.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 60rem; margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
+  @media (max-width: 640px) { .wrap { padding: 2.25rem 1.1rem 4rem; } }
+
+  h1, h2, h3, h4 { font-family: var(--f-head); text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2rem, 4.6vw, 2.85rem); font-weight: 700; letter-spacing: -.026em; line-height: 1.08; }
+  h2 { font-size: 1.36rem; font-weight: 650; letter-spacing: -.016em; }
+  h3 { font-size: 1.03rem; font-weight: 600; letter-spacing: -.008em; }
+  p { margin: 0; }
+  code, kbd, .mono { font-family: var(--f-mono); font-size: .855em; font-variant-ligatures: none; }
+  code { background: var(--sunken); padding: .1em .36em; border-radius: 4px; }
+  a { color: var(--accent); }
+
+  .eyebrow {
+    font-family: var(--f-mono); font-size: .705rem; font-weight: 600;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--faint);
+  }
+  .lede { font-size: 1.13rem; color: var(--muted); max-width: 62ch; }
+  .prose { max-width: 72ch; }
+
+  header.masthead { display: flex; flex-direction: column; gap: .85rem; padding-bottom: 1.5rem; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: .45rem 1.4rem; padding-top: .9rem;
+    border-top: 1px solid var(--line); font-family: var(--f-mono); font-size: .755rem; color: var(--faint);
+  }
+  .meta b { color: var(--muted); font-weight: 600; }
+
+  section { margin-top: 3rem; display: flex; flex-direction: column; gap: 1.1rem; }
+  .sec-head { display: flex; flex-direction: column; gap: .3rem; }
+
+  /* callouts */
+  .callout {
+    border: 1px solid var(--line); border-left: 3px solid var(--edge, var(--accent));
+    background: var(--surface); border-radius: 7px; padding: 1.05rem 1.2rem;
+    display: flex; flex-direction: column; gap: .5rem; box-shadow: var(--shadow);
+  }
+  .callout.stop { --edge: var(--stop); }
+  .callout.warn { --edge: var(--warn); }
+  .callout.ok   { --edge: var(--ok); }
+  .callout h3 { display: flex; align-items: baseline; gap: .55rem; }
+  .tag {
+    font-family: var(--f-mono); font-size: .655rem; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; padding: .17em .48em; border-radius: 3px; white-space: nowrap;
+  }
+  .tag.stop { background: var(--stop-sk); color: var(--stop); }
+  .tag.warn { background: var(--warn-sk); color: var(--warn); }
+  .tag.ok   { background: var(--ok-sk);   color: var(--ok); }
+  .tag.info { background: var(--accent-sk); color: var(--accent); }
+
+  /* phases */
+  .phase {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .phase > .bar {
+    display: flex; align-items: center; gap: .8rem;
+    padding: .9rem 1.2rem; border-bottom: 1px solid var(--line-soft); background: var(--sunken);
+  }
+  .num {
+    font-family: var(--f-mono); font-size: .8rem; font-weight: 600;
+    background: var(--ink); color: var(--ground);
+    width: 1.65rem; height: 1.65rem; flex: 0 0 auto;
+    border-radius: 5px; display: grid; place-items: center;
+  }
+  .bar .who {
+    margin-left: auto; font-family: var(--f-mono); font-size: .705rem; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+    background: var(--surface); border: 1px solid var(--line);
+    padding: .2em .55em; border-radius: 4px; white-space: nowrap;
+  }
+  .steps { list-style: none; margin: 0; padding: 0; }
+  .steps > li { padding: 1.05rem 1.2rem; display: flex; flex-direction: column; gap: .55rem; }
+  .steps > li + li { border-top: 1px solid var(--line-soft); }
+  .do { display: flex; gap: .6rem; align-items: baseline; }
+  .do .idx { font-family: var(--f-mono); font-size: .8rem; color: var(--faint); flex: 0 0 auto; }
+  .do p { max-width: 68ch; }
+  .expect {
+    display: grid; grid-template-columns: max-content 1fr; gap: .3rem .7rem;
+    background: var(--sunken); border-radius: 6px; padding: .6rem .8rem; margin-left: 1.75rem;
+    font-size: .935rem;
+  }
+  @media (max-width: 560px) { .expect { grid-template-columns: 1fr; margin-left: 0; } }
+  .expect dt {
+    font-family: var(--f-mono); font-size: .69rem; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--faint); padding-top: .28em;
+  }
+  .expect dd { margin: 0; color: var(--ink); }
+  .expect dd em { color: var(--muted); font-style: italic; }
+
+  /* state chain */
+  .chain-scroll { overflow-x: auto; padding-bottom: .4rem; }
+  .chain { display: flex; align-items: center; gap: .4rem; min-width: max-content; padding: .15rem; }
+  .st {
+    font-family: var(--f-mono); font-size: .735rem; white-space: nowrap;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    padding: .34em .6em; border-radius: 5px;
+  }
+  .st.term { border-color: var(--ok); background: var(--ok-sk); color: var(--ok); font-weight: 600; }
+  .st.gate { border-color: var(--warn); background: var(--warn-sk); color: var(--warn); }
+  .arw { color: var(--faint); font-family: var(--f-mono); font-size: .8rem; }
+
+  /* tables */
+  .tscroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 41rem; font-size: .93rem; }
+  th, td { text-align: left; padding: .62rem .85rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  thead th {
+    font-family: var(--f-mono); font-size: .685rem; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--faint); background: var(--sunken); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.code { font-family: var(--f-mono); font-size: .8rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .hs { font-family: var(--f-mono); font-weight: 600; font-size: .8rem; }
+  .hs.g { color: var(--ok); } .hs.a { color: var(--warn); } .hs.r { color: var(--stop); }
+
+  pre {
+    margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: .95rem 1.1rem; overflow-x: auto; box-shadow: var(--shadow);
+    font-family: var(--f-mono); font-size: .805rem; line-height: 1.6; color: var(--ink);
+  }
+  pre .c { color: var(--faint); }
+
+  ul.plain { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: .4rem; max-width: 72ch; }
+  ul.plain li::marker { color: var(--faint); }
+
+  hr.rule { border: none; border-top: 1px solid var(--line); margin: 0; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Aalaya · demo script</p>
+    <h1>Tenant Onboarding Runbook</h1>
+    <p class="lede">Owner sends an invite, the tenant onboards, the tenant signs in — run in order, with the edge cases worth showing and the one gap to route around before an audience sees it.</p>
+    <div class="meta">
+      <span><b>Verified against</b> your running backend, 31 Aug 2026</span>
+      <span><b>Branch</b> HSR Layout</span>
+      <span><b>Free beds</b> 13 of 15</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">Read before you start</p>
+      <h2>One blocker, one missing step</h2>
+    </div>
+
+    <div class="callout stop">
+      <h3><span class="tag stop">Blocker</span> The tenant cannot verify themselves</h3>
+      <p class="prose">Self-verification runs through DigiLocker, and DigiLocker is not configured — there are no <code>DIGILOCKER_*</code> values in your <code>.env</code>. I called the endpoint on your running server: <code>POST /tenant-invitations/{id}/digilocker/start</code> returns <span class="hs r">500</span> <em>“DigiLocker is not configured”</em>. The app's Identity verification screen has no way past that.</p>
+      <p class="prose">The only other route from <code>kyc_pending</code> to verified is <b>Manual identity review</b>, which is a staff action — so in the current setup <em>you</em> verify the tenant, not the tenant. Phase 3 gives you both the honest framing and the alternative.</p>
+    </div>
+
+    <div class="callout ok">
+      <h3><span class="tag ok">Working</span> Live OTP delivery is confirmed</h3>
+      <p class="prose">Codes arrive in real time through Resend from <code>no-reply@flix89.buzz</code> — confirmed by actually receiving them. The key, the DNS for <code>flix89.buzz</code> and the sender wiring all check out too, so this is settled and needs no rehearsal.</p>
+      <p class="prose">Still worth <b>one send in the hour before you present</b>, not to prove the feature but to catch the environmental things that do drift: a stale backend on port 8080, a dropped <code>adb reverse</code>, or an address that has already spent its 3-codes-per-15-minutes budget.</p>
+    </div>
+
+    <div class="callout warn">
+      <h3><span class="tag warn">Correction</span> Your flow is missing a step</h3>
+      <p class="prose">You described it as: owner invites → tenant verifies → tenant logs in. There is an <b>owner approval</b> after verification. The tenant sits at <code>approval_pending</code> and cannot sign in as a tenant until you approve. That's a feature — it's the maker-checker gate — but it means the tenant's screen will look stuck if you don't know to switch back to the owner account.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">The shape of it</p>
+      <h2>States the invitation moves through</h2>
+    </div>
+    <div class="chain-scroll">
+      <div class="chain">
+        <span class="st">invited</span><span class="arw">→</span>
+        <span class="st">email_verified</span><span class="arw">→</span>
+        <span class="st gate">kyc_pending</span><span class="arw">→</span>
+        <span class="st">kyc_verified</span><span class="arw">→</span>
+        <span class="st">approval_pending</span><span class="arw">→</span>
+        <span class="st">approved</span><span class="arw">→</span>
+        <span class="st term">active</span>
+      </div>
+    </div>
+    <p class="prose">Each arrow is enforced server-side; skipping one returns <span class="hs a">409</span> with the exact transition it refused. <code>kyc_pending</code> is the amber step — it only exists when you tick <b>Require identity verification</b>, and it's the one that's blocked. Leave that toggle off and the chain runs <code>email_verified → approval_pending</code> directly.</p>
+    <p class="prose">Dead ends, all reachable and all worth a mention: <code>declined</code> and <code>cancelled</code> from early states, <code>rejected</code> from <code>email_verified</code> or <code>approval_pending</code>, <code>kyc_failed</code> from <code>kyc_pending</code>, and <code>expired</code> after 7 days.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><p class="eyebrow">Phase 0</p><h2>Pre-flight, before anyone is watching</h2></div>
+
+    <div class="phase">
+      <div class="bar"><span class="num">0</span><h3>Prove the plumbing</h3><span class="who">You, alone</span></div>
+      <ol class="steps">
+        <li>
+          <div class="do"><span class="idx">0.1</span><p>Confirm the right backend is on port 8080. There is a second, stale checkout at <code>/home/bhargavraj/Documents/backend_backup</code> that silently uses a local Postgres and a log-only email sender — if that one is running, nothing in this runbook works.</p></div>
+          <dl class="expect">
+            <dt>Run</dt><dd class="mono">lsof -a -p $(lsof -ti:8080) -d cwd -Fn</dd>
+            <dt>Expect</dt><dd>a path ending <code>backend</code>. Anything else — kill it and restart from <code>backend</code>.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">0.2</span><p>Fire one real OTP so you know <em>this session's</em> environment is intact. Delivery itself is proven — you're checking the backend, the tunnel and the rate budget, not Resend.</p></div>
+          <dl class="expect">
+            <dt>Run</dt><dd class="mono">curl -X POST http://127.0.0.1:8080/api/v1/auth/email/send-otp \<br>&nbsp;&nbsp;-H 'Content-Type: application/json' \<br>&nbsp;&nbsp;-d '{"email":"bhargavraj911@gmail.com"}'</dd>
+            <dt>Expect</dt><dd><code>{"status":"sent"}</code> <b>and</b> a mail from <code>no-reply@flix89.buzz</code> titled <em>OTP for Secure Login - Aalaya</em> within about a minute.</dd>
+            <dt>If nothing</dt><dd>check spam, then the server log for <code>Resend rejected login email</code> — that line carries Resend's own reason. A <code>400</code> instead means you've already spent that address's 3-per-15-min budget; use a different address.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">0.3</span><p>Pick a <b>fresh</b> email for the tenant. <code>ashrithbade888@gmail.com</code> is already an active tenant in 101-A, so it will not demo the onboarding path. Either use a new address or run the reset in the last section.</p></div>
+          <dl class="expect">
+            <dt>Needs</dt><dd>an inbox you can open on camera, on a phone or second window.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">0.4</span><p>Decide how the tenant's device gets on stage. The emulator can only hold one signed-in account at a time, so switching between owner and tenant means logging out and back in — and each login burns an OTP against the limits below.</p></div>
+          <dl class="expect">
+            <dt>Smoother</dt><dd>a second emulator or a physical device for the tenant, so both accounts stay signed in and you just switch screens.</dd>
+            <dt>Note</dt><dd>a second device needs its own <code>adb reverse tcp:8080 tcp:8080</code>.</dd>
+          </dl>
+        </li>
+      </ol>
+    </div>
+
+    <div class="callout warn">
+      <h3><span class="tag warn">Budget</span> You get fewer logins than you think</h3>
+      <p class="prose">Three limits, all verified. Per address: <b>30&nbsp;s</b> between code requests, and <b>3 requests per 15&nbsp;min</b> — the fourth returns <span class="hs a">400</span> <em>“too many code requests”</em>. Per IP across the OTP routes: <b>20 requests per 15&nbsp;min</b>, then <span class="hs r">429</span>. A code lives <b>10&nbsp;min</b> and survives <b>5</b> wrong guesses.</p>
+      <p class="prose">Two accounts logging in twice each is well inside that. Rehearsing the whole flow twice back to back is not — the per-address limit is what you'll hit. Rehearse with a different address than you demo with.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><p class="eyebrow">Phase 1</p><h2>Owner signs in and sends the invite</h2></div>
+    <div class="phase">
+      <div class="bar"><span class="num">1</span><h3>Create the invitation</h3><span class="who">Owner · bhargavraj911</span></div>
+      <ol class="steps">
+        <li>
+          <div class="do"><span class="idx">1.1</span><p>On the login screen enter the owner email and tap through. The screen asks for the code on the same view once it's sent — there's no separate page.</p></div>
+          <dl class="expect">
+            <dt>Expect</dt><dd>bottom-nav reads <b>Home · Occupancy · Payments · Complaints · More</b>.</dd>
+            <dt>Proves</dt><dd>role resolution — this account also holds <code>prospect</code> and a stale <code>tenant</code>, and still lands on the owner shell.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">1.2</span><p>Go <b>More → Tenant invitations</b>, then the create action. Screen title is <b>Invite tenant</b>.</p></div>
+          <dl class="expect">
+            <dt>Expect</dt><dd>a list titled <b>Tenant invitations</b> showing existing ones, including Ashrith's <code>active</code> record.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">1.3</span><p>Fill in the tenant's email and name, plan <b>monthly</b>, branch <b>HSR Layout</b>, room <b>101</b>, bed <b>B</b>, rent <b>₹12,500</b>, deposit <b>₹25,000</b>.</p></div>
+          <dl class="expect">
+            <dt>Leave off</dt><dd><b>Require identity verification</b> — see Phase 3 before you decide. Off is the path that completes.</dd>
+            <dt>Expect</dt><dd>invitation created at <code>invited</code>, expiring in 7 days.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">1.4</span><p>Point out that an invitation email has gone out — and set expectations about it, because it will look sparse.</p></div>
+          <dl class="expect">
+            <dt>Expect</dt><dd>subject <em>You are invited to join Aalaya</em>, with <b>no clickable link</b>.</dd>
+            <dt>Why</dt><dd><code>APP_DEEP_LINK_BASE</code> is <code>hamsavilas://onboarding</code>, and Gmail strips <code>href</code>s on non-web schemes. The code deliberately omits a dead link and directs the reader to the app's Invites tab instead. Say this out loud rather than letting someone notice it.</dd>
+          </dl>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><p class="eyebrow">Phase 2</p><h2>Tenant signs in and accepts</h2></div>
+    <div class="phase">
+      <div class="bar"><span class="num">2</span><h3>First login is not a tenant login</h3><span class="who">Invitee</span></div>
+      <ol class="steps">
+        <li>
+          <div class="do"><span class="idx">2.1</span><p>Log out of the owner account (<b>More → Log out</b>), then sign in with the invited email and the code from that inbox.</p></div>
+          <dl class="expect">
+            <dt>Expect</dt><dd>nav reads <b>Explore · Invites · Profile</b> — three tabs, not five.</dd>
+            <dt>Proves</dt><dd>the account exists as a <code>prospect</code>, created on first code request. It becomes a tenant only after approval. This is the single most misread moment in the flow — call it out.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">2.2</span><p>Open the <b>Invites</b> tab. Screen title is <b>Your invitations</b>. Tap the invitation.</p></div>
+          <dl class="expect">
+            <dt>Expect</dt><dd>the invitation with branch, room, bed, rent and deposit, and a next step of <b>accept or decline</b>.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">2.3</span><p>Accept.</p></div>
+          <dl class="expect">
+            <dt>Expect, toggle off</dt><dd>status <code>approval_pending</code>, next step <em>wait for approval</em>. Go to Phase 4.</dd>
+            <dt>Expect, toggle on</dt><dd>status <code>kyc_pending</code>, next step <em>complete identity verification</em>. Go to Phase 3.</dd>
+          </dl>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><p class="eyebrow">Phase 3</p><h2>Identity verification — the blocked step</h2></div>
+    <div class="callout stop">
+      <h3><span class="tag stop">Choose one</span> Don't discover this live</h3>
+      <p class="prose">If you ticked the toggle, the tenant is now at <code>kyc_pending</code> and there is no self-service way out of it. Pick a lane before you present.</p>
+    </div>
+    <div class="phase">
+      <div class="bar"><span class="num">3</span><h3>Three honest options</h3><span class="who">Your call</span></div>
+      <ol class="steps">
+        <li>
+          <div class="do"><span class="idx">A</span><p><b>Skip it.</b> Leave <b>Require identity verification</b> off in step 1.3. The invitation goes straight to <code>approval_pending</code> on accept and the demo runs clean end to end.</p></div>
+          <dl class="expect">
+            <dt>Best for</dt><dd>showing the onboarding flow itself. <em>Recommended.</em></dd>
+            <dt>Cost</dt><dd>you don't demo KYC at all.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">B</span><p><b>Show it, then resolve it as staff.</b> Let the tenant tap into <b>Identity verification</b> and hit the failure, then switch to the owner and use <b>Manual identity review → approved</b> with a reason like “verified passport in person”.</p></div>
+          <dl class="expect">
+            <dt>Verified</dt><dd>manual review moved the invitation to <code>approval_pending</code>. It works.</dd>
+            <dt>Cost</dt><dd>the audience sees a <span class="hs r">500</span> error screen first. Only take this lane if you're willing to say “DigiLocker isn't wired up in this environment yet” out loud.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">C</span><p><b>Wire up DigiLocker.</b> Set the four <code>DIGILOCKER_*</code> values and restart. <code>docs/digilocker-partner-setup.md</code> has the partner steps.</p></div>
+          <dl class="expect">
+            <dt>Cost</dt><dd>needs real partner credentials — not a same-day change.</dd>
+          </dl>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><p class="eyebrow">Phase 4</p><h2>Owner approves</h2></div>
+    <div class="phase">
+      <div class="bar"><span class="num">4</span><h3>The maker-checker gate</h3><span class="who">Owner</span></div>
+      <ol class="steps">
+        <li>
+          <div class="do"><span class="idx">4.1</span><p>Switch back to the owner. Go <b>More → Tenant invitations</b> and open the pending one.</p></div>
+          <dl class="expect">
+            <dt>Expect</dt><dd>status <code>approval_pending</code> with approve and reject available.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">4.2</span><p>Approve. This is the moment worth narrating — one transaction does all of it.</p></div>
+          <dl class="expect">
+            <dt>Expect</dt><dd>status <code>active</code>.</dd>
+            <dt>Server-side</dt><dd>grants the <code>tenant</code> role scoped to HSR Layout, creates the resident as <code>active</code> with the invited rent and deposit, assigns bed 101-B, links the login, and writes an audit entry — atomically. If the bed got taken meanwhile, the whole thing rolls back with a conflict.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">4.3</span><p>Show it landed: <b>Occupancy</b> now counts the bed as taken, and <b>Branches → 101 → B</b> shows the new resident.</p></div>
+          <dl class="expect">
+            <dt>Proves</dt><dd>one approval populated tenancy, finance and occupancy together — no second data-entry step.</dd>
+          </dl>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><p class="eyebrow">Phase 5</p><h2>Tenant signs in for real</h2></div>
+    <div class="phase">
+      <div class="bar"><span class="num">5</span><h3>The role flip</h3><span class="who">Tenant</span></div>
+      <ol class="steps">
+        <li>
+          <div class="do"><span class="idx">5.1</span><p>Log out, then sign in again with the tenant's email and a fresh code. <b>Mind the 30-second cooldown</b> since their last code.</p></div>
+          <dl class="expect">
+            <dt>Expect</dt><dd>nav is now <b>Home · Receipts · Complaints · Away · Profile</b> — five tabs. The same email that got three tabs in Phase 2 now gets the tenant shell.</dd>
+            <dt>Proves</dt><dd>the role came from approval, not from anything the tenant did.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">5.2</span><p>Expect an <b>identity verification screen</b> on this first tenant login, and know why: the app gates tenants on the account's <code>verified</code> flag, which approval does not set.</p></div>
+          <dl class="expect">
+            <dt>Expect</dt><dd>with <code>VERIFICATION_METHOD=mock</code> it passes in one tap. Krish is already verified, so his account skips this.</dd>
+            <dt>Careful</dt><dd>don't call this DigiLocker — it's the separate account-level gate, and it does work.</dd>
+          </dl>
+        </li>
+        <li>
+          <div class="do"><span class="idx">5.3</span><p>Land on <b>Home</b> and show the ledger: rent ₹12,500, deposit ₹25,000, room 101 bed B.</p></div>
+          <dl class="expect">
+            <dt>Expect</dt><dd>figures match what the owner typed in step 1.3.</dd>
+            <dt>Known gap</dt><dd>the profile name may be blank. Activation writes the invited name to the resident record but never to the login account, and Profile reads the login account. Their OTP emails will greet “Dear there” for the same reason. One-line fix in <code>tenant_activation.rs</code>; for the demo, set it by hand as I did for Ashrith.</dd>
+          </dl>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">Verified on your server</p>
+      <h2>Edge cases worth showing</h2>
+    </div>
+    <p class="prose">Every row below I ran against your running backend today. The refusals are the interesting half of the demo — they're what makes the state machine credible.</p>
+
+    <h3 style="margin-top:.5rem">Refusals that prove the state machine</h3>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Do this</th><th>Result</th><th>Message</th></tr></thead>
+        <tbody>
+          <tr><td>Approve before the tenant accepts</td><td class="code"><span class="hs a">409</span></td><td class="code">invited -&gt; approved refused</td></tr>
+          <tr><td>Approve while at <code>kyc_pending</code></td><td class="code"><span class="hs a">409</span></td><td class="code">kyc_pending -&gt; approved refused</td></tr>
+          <tr><td>Tenant taps Accept twice</td><td class="code"><span class="hs a">409</span></td><td class="code">kyc_pending -&gt; email_verified refused</td></tr>
+          <tr><td>A different signed-in user accepts someone else's invitation</td><td class="code"><span class="hs r">403</span></td><td class="code">forbidden</td></tr>
+          <tr><td>Tenant starts DigiLocker verification</td><td class="code"><span class="hs r">500</span></td><td class="code">DigiLocker is not configured</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:1.2rem">Login and OTP edges</h3>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Do this</th><th>Result</th><th>Message</th></tr></thead>
+        <tbody>
+          <tr><td>Wrong code</td><td class="code"><span class="hs r">401</span></td><td class="code">unauthorized</td></tr>
+          <tr><td>Reuse a code that already worked</td><td class="code"><span class="hs r">401</span></td><td>single-use, enforced by <code>consumed_at</code></td></tr>
+          <tr><td>Request a second code within 30&nbsp;s</td><td class="code"><span class="hs a">400</span></td><td class="code">please wait 27s before requesting another code</td></tr>
+          <tr><td>Fourth code for one address inside 15&nbsp;min</td><td class="code"><span class="hs a">400</span></td><td class="code">too many code requests; try again later</td></tr>
+          <tr><td>Over 20 OTP calls from one IP in 15&nbsp;min</td><td class="code"><span class="hs r">429</span></td><td class="code">too many requests</td></tr>
+          <tr><td>Code for an address with no account</td><td class="code"><span class="hs g">200</span></td><td>deliberate — reveals nothing about who has an account</td></tr>
+          <tr><td>Malformed address</td><td class="code"><span class="hs a">400</span></td><td class="code">invalid email</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:1.2rem">Gaps — real behaviour, not what you'd assume</h3>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Do this</th><th>Result</th><th>What actually happens</th></tr></thead>
+        <tbody>
+          <tr><td>Invite an email that is already an active tenant</td><td class="code"><span class="hs a">200</span></td><td>Accepted. No guard — a second invitation is created for someone who already lives there.</td></tr>
+          <tr><td>Invite the same email twice while one is pending</td><td class="code"><span class="hs a">200</span></td><td>Both exist, and the tenant's Invites tab lists two. <b>Avoid on stage</b> — pick one address and invite once.</td></tr>
+          <tr><td>Invite onto an already-occupied bed</td><td class="code"><span class="hs a">200</span></td><td>Accepted at create time. The conflict only surfaces at approval, when activation checks occupancy. Late, but not silent.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="prose">If someone asks whether these are bugs: the first two are missing guards worth adding, and the third is a deliberate late check — a bed can legitimately free up between invite and approval, so validating early would reject valid invitations.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><p class="eyebrow">Between runs</p><h2>Reset so you can demo the same address twice</h2></div>
+    <p class="prose">Rehearsing burns the address — once activated, that email is a tenant and can't be invited through onboarding again. This clears one candidate back to nothing. It touches only that address and the beds it held.</p>
+    <pre><span class="c"># set the address you demoed with</span>
+EMAIL='demo.tenant@example.com'
+
+cd /home/bhargavraj/Documents/backend
+set -a &amp;&amp; . ./.env &amp;&amp; set +a
+
+psql "$DATABASE_URL" &lt;&lt;SQL
+BEGIN;
+DELETE FROM pool.residents
+ WHERE user_id IN (SELECT id FROM platform_users WHERE email='$EMAIL');
+DELETE FROM manual_kyc_reviews
+ WHERE invitation_id IN (SELECT id FROM tenant_invitations WHERE email='$EMAIL');
+DELETE FROM invitation_identity_verifications
+ WHERE invitation_id IN (SELECT id FROM tenant_invitations WHERE email='$EMAIL');
+DELETE FROM tenant_invitations WHERE email='$EMAIL';
+DELETE FROM email_otps     WHERE email='$EMAIL';
+DELETE FROM refresh_tokens WHERE user_id IN (SELECT id FROM platform_users WHERE email='$EMAIL');
+DELETE FROM user_org_roles WHERE user_id IN (SELECT id FROM platform_users WHERE email='$EMAIL');
+DELETE FROM platform_users WHERE email='$EMAIL';
+COMMIT;
+SQL</pre>
+    <p class="prose">Deleting the resident row is what frees the bed. Clearing <code>email_otps</code> also resets that address's 3-per-15-min budget, which is the limit you'll actually hit while rehearsing.</p>
+    <div class="callout ok">
+      <h3><span class="tag ok">Note</span> Ashrith is the exception</h3>
+      <p class="prose">Same script with <code>EMAIL='ashrithbade888@gmail.com'</code> frees bed 101-A and returns that address to unused — useful if you'd rather demo with a real inbox you control than invent a new one.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><p class="eyebrow">One screen</p><h2>The whole run</h2></div>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>#</th><th>Who</th><th>Action</th><th>Status after</th><th>Nav they see</th></tr></thead>
+        <tbody>
+          <tr><td class="code">1</td><td>Owner</td><td>Sign in, More → Tenant invitations → Invite tenant</td><td class="code">invited</td><td>Home · Occupancy · Payments · Complaints · More</td></tr>
+          <tr><td class="code">2</td><td>Invitee</td><td>Sign in, Invites → open → Accept</td><td class="code">approval_pending</td><td>Explore · Invites · Profile</td></tr>
+          <tr><td class="code">3</td><td>—</td><td><em>Skipped when the toggle is off</em></td><td class="code">—</td><td>—</td></tr>
+          <tr><td class="code">4</td><td>Owner</td><td>Tenant invitations → open → Approve</td><td class="code">active</td><td>role + resident + bed created</td></tr>
+          <tr><td class="code">5</td><td>Tenant</td><td>Sign in again, clear the one-tap gate</td><td class="code">active</td><td>Home · Receipts · Complaints · Away · Profile</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="prose">Four logins total, two per address — inside every limit. The only thing that still needs a decision is Phase 3: leave <b>Require identity verification</b> off and this run completes without touching the DigiLocker gap.</p>
+  </section>
+
+</div>

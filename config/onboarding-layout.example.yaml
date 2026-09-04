@@ -1,0 +1,17 @@
+version: 1
+floors:
+  start: 1
+  count: 6
+rooms:
+  per_floor: 3
+  start_at: 1
+  overrides:
+    "101": { beds: 2, cooling_type: ac }
+    "102": { beds: 4, cooling_type: ac }
+    "201": { beds: 5, cooling_type: non_ac }
+beds:
+  default_per_room: 3
+identity_verification:
+  required_for_tenant_activation: true
+  provider: digilocker
+  allow_manual_review: true

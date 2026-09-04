@@ -52,7 +52,7 @@ pub use listings::PgListingRepository;
 pub use notices::PgNoticeRepository;
 pub use organizations::PgOrganizationRepository;
 pub use payments::PgPaymentRepository;
-pub use pool::{connect, connect_migrations};
+pub use pool::{connect, connect_migrations, connect_with_limits};
 pub use promotion::PgTenantProvisioner;
 pub use receipt_templates::PgReceiptTemplateRepository;
 pub use refresh_tokens::PgRefreshTokenRepository;

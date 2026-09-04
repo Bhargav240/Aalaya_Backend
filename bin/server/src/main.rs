@@ -61,7 +61,14 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let state = match &config.database_url {
-        Some(url) => match persistence::connect(url).await {
+        Some(url) => match persistence::connect_with_limits(
+            url,
+            config.db_min_connections,
+            config.db_max_connections,
+            config.db_idle_timeout_secs,
+        )
+        .await
+        {
             Ok(pool) => {
                 match run_migrations(config.migration_database_url.as_deref().unwrap_or(url)).await
                 {
@@ -258,6 +265,7 @@ async fn main() -> anyhow::Result<()> {
                             )),
                             deps: Some(Arc::new(deps)),
                             revoked_jtis: Default::default(),
+                            active_memberships_cache: Default::default(),
                         }
                     }
                     Err(e) => {
@@ -268,6 +276,7 @@ async fn main() -> anyhow::Result<()> {
                             )),
                             deps: None,
                             revoked_jtis: Default::default(),
+                            active_memberships_cache: Default::default(),
                         }
                     }
                 }
@@ -280,6 +289,7 @@ async fn main() -> anyhow::Result<()> {
                     )),
                     deps: None,
                     revoked_jtis: Default::default(),
+                    active_memberships_cache: Default::default(),
                 }
             }
         },
@@ -291,6 +301,7 @@ async fn main() -> anyhow::Result<()> {
                 )),
                 deps: None,
                 revoked_jtis: Default::default(),
+                active_memberships_cache: Default::default(),
             }
         }
     };

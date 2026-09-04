@@ -37,9 +37,8 @@ impl FromRequestParts<AppState> for AuthUser {
         if state.is_jti_revoked(&claims.jti) {
             return Err(AppError::Unauthorized.into());
         }
-        if !deps
-            .user_repo
-            .has_active_membership(claims.user_id, claims.org_id, claims.role)
+        if !state
+            .check_active_membership(claims.user_id, claims.org_id, claims.role)
             .await?
         {
             return Err(AppError::Unauthorized.into());

@@ -111,6 +111,14 @@ pub struct AppState {
     /// restart "forgets" revocations — accepted: the 15-min TTL then governs.
     pub revoked_jtis: Arc<dashmap::DashMap<String, i64>>,
     pub platform_logs: Arc<RwLock<VecDeque<PlatformLog>>>,
+    /// Short-lived cache for active user memberships, eliminating a redundant
+    /// PostgreSQL round-trip on every authenticated request.
+    pub active_memberships_cache: Arc<
+        dashmap::DashMap<
+            (pg_domain::UserId, pg_domain::OrgId, pg_domain::Role),
+            (bool, time::OffsetDateTime),
+        >,
+    >,
 }
 
 impl AppState {
@@ -138,5 +146,36 @@ impl AppState {
     /// Fast path for the extractor — true if this token was explicitly revoked.
     pub fn is_jti_revoked(&self, jti: &str) -> bool {
         self.revoked_jtis.contains_key(jti)
+    }
+
+    /// Check whether the user has an active membership, caching the result in
+    /// memory for 60 seconds to eliminate physical database round-trips.
+    pub async fn check_active_membership(
+        &self,
+        user_id: pg_domain::UserId,
+        org_id: pg_domain::OrgId,
+        role: pg_domain::Role,
+    ) -> Result<bool, AppError> {
+        let key = (user_id, org_id, role);
+        let now = time::OffsetDateTime::now_utc();
+        if let Some(entry) = self.active_memberships_cache.get(&key) {
+            let (is_active, cached_at) = *entry;
+            if (now - cached_at) < time::Duration::seconds(60) {
+                return Ok(is_active);
+            }
+        }
+        let deps = self.deps()?;
+        let is_active = deps
+            .user_repo
+            .has_active_membership(user_id, org_id, role)
+            .await?;
+        self.active_memberships_cache.insert(key, (is_active, now));
+        Ok(is_active)
+    }
+
+    /// Invalidate membership cache for a user (e.g. on logout or role change).
+    pub fn invalidate_membership_cache(&self, user_id: pg_domain::UserId) {
+        self.active_memberships_cache
+            .retain(|(u, _, _), _| *u != user_id);
     }
 }

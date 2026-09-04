@@ -69,6 +69,12 @@ pub struct Config {
     pub archive_interval_secs: i64,
     /// Soft-deleted rows older than this many days get archived.
     pub archive_older_than_days: i64,
+    /// Minimum warmed DB connections maintained in the pool (default 5).
+    pub db_min_connections: u32,
+    /// Maximum DB connections in the pool (default 20).
+    pub db_max_connections: u32,
+    /// Idle connection timeout in seconds before retiring (default 120s).
+    pub db_idle_timeout_secs: u64,
 }
 
 const DEV_SECRET: &str = "dev-insecure-secret-change-me";
@@ -236,6 +242,18 @@ impl Config {
             vacancy_interval_secs: env_i64("VACANCY_INTERVAL_SECS", 120),
             archive_interval_secs: env_i64("ARCHIVE_INTERVAL_SECS", 86_400),
             archive_older_than_days: env_i64("ARCHIVE_OLDER_THAN_DAYS", 30),
+            db_min_connections: env::var("DB_MIN_CONNECTIONS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(5),
+            db_max_connections: env::var("DB_MAX_CONNECTIONS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(20),
+            db_idle_timeout_secs: env::var("DB_IDLE_TIMEOUT_SECS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(120),
         }
     }
 }

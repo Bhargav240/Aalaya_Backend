@@ -203,6 +203,7 @@ async fn logout(
     // for the remainder of its TTL. Bounded by the access-token TTL, and the
     // blocklist is opportunistically GC'd on insert.
     state.revoke_jti(&claims.jti, claims.exp);
+    state.invalidate_membership_cache(claims.user_id);
     Ok(Json(json!({ "status": "logged_out" })))
 }
 

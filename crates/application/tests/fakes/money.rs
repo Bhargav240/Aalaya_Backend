@@ -12,13 +12,15 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use uuid::Uuid;
 
+type PaymentHistoryEntry = (Uuid, i64, String);
+
 pub struct FakePaymentRepo {
     /// resident_id -> total paise recorded via `record`.
     pub paid: Mutex<HashMap<Uuid, i64>>,
     pub ready: Mutex<Vec<(Uuid, String)>>,
     /// resident_id -> the live payments in order, so a reversal can pop the
     /// latest one the way the real repository does.
-    pub history: Mutex<HashMap<Uuid, Vec<(Uuid, i64, String)>>>,
+    pub history: Mutex<HashMap<Uuid, Vec<PaymentHistoryEntry>>>,
 }
 
 impl FakePaymentRepo {

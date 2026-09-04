@@ -41,11 +41,6 @@ struct CreateResp {
 }
 
 #[derive(Serialize)]
-struct IdResp {
-    id: String,
-}
-
-#[derive(Serialize)]
 struct BedOut {
     id: String,
     room_id: String,

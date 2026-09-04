@@ -102,6 +102,10 @@ pub struct Deps {
     pub platform_org_id: pg_domain::OrgId,
 }
 
+pub type MembershipKey = (pg_domain::UserId, pg_domain::OrgId, pg_domain::Role);
+pub type MembershipValue = (bool, time::OffsetDateTime);
+pub type MembershipCache = Arc<dashmap::DashMap<MembershipKey, MembershipValue>>;
+
 #[derive(Clone)]
 pub struct AppState {
     pub deps: Option<Arc<Deps>>,
@@ -113,12 +117,7 @@ pub struct AppState {
     pub platform_logs: Arc<RwLock<VecDeque<PlatformLog>>>,
     /// Short-lived cache for active user memberships, eliminating a redundant
     /// PostgreSQL round-trip on every authenticated request.
-    pub active_memberships_cache: Arc<
-        dashmap::DashMap<
-            (pg_domain::UserId, pg_domain::OrgId, pg_domain::Role),
-            (bool, time::OffsetDateTime),
-        >,
-    >,
+    pub active_memberships_cache: MembershipCache,
 }
 
 impl AppState {

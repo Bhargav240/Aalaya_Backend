@@ -52,6 +52,8 @@ struct LoginResp {
 #[derive(Deserialize)]
 struct RequestEmailOtpReq {
     email: String,
+    full_name: Option<String>,
+    phone: Option<String>,
 }
 
 /// Sign-in step 1: send a one-time code by email.
@@ -71,6 +73,8 @@ async fn request_email_otp(
         window_secs: deps.email_otp_window_secs,
         otp_ttl_secs: deps.otp_ttl_secs,
         email: &req.email,
+        full_name: req.full_name.as_deref(),
+        phone: req.phone.as_deref(),
     })
     .await?;
     Ok(Json(json!({ "status": "sent" })))
@@ -80,6 +84,8 @@ async fn request_email_otp(
 struct VerifyEmailOtpReq {
     email: String,
     code: String,
+    full_name: Option<String>,
+    phone: Option<String>,
 }
 
 /// Sign-in step 2: code in, tokens out. Tells the caller if this is the
@@ -99,6 +105,8 @@ async fn verify_email_otp(
         otp_max_attempts: deps.otp_max_attempts,
         email: &req.email,
         code: req.code.trim(),
+        full_name: req.full_name.as_deref(),
+        phone: req.phone.as_deref(),
     })
     .await?;
     Ok(Json(LoginResp {

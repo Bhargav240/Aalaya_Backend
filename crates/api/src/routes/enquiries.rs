@@ -27,6 +27,7 @@ pub fn router() -> Router<AppState> {
 #[derive(Deserialize)]
 struct EnquireReq {
     note: Option<String>,
+    phone: Option<String>,
 }
 
 /// Prospect step 2: the code from step 1 verifies the phone. On success the
@@ -41,9 +42,11 @@ async fn enquire(
     let deps = state.deps()?;
     services::create_authenticated_enquiry(services::AuthenticatedEnquiryCommand {
         enquiry_repo: deps.enquiry_repo.as_ref(),
+        user_repo: deps.user_repo.as_ref(),
         branch_id: BranchId::new(branch_id),
         user_id: claims.user_id,
         note: req.note.as_deref(),
+        phone: req.phone.as_deref(),
     })
     .await?;
     Ok(Json(json!({ "status": "received" })))
@@ -56,10 +59,9 @@ struct EnquiryOut {
     phone: String,
     note: Option<String>,
     status: String,
-    /// When the lead arrived. The repository has always selected this and the
-    /// client has always required it; it was simply not carried across here,
-    /// which failed decoding for any non-empty inbox.
     created_at_epoch: i64,
+    prospect_name: Option<String>,
+    email: Option<String>,
 }
 
 /// The manager's inbox (own branch) / owner's org inbox.
@@ -85,6 +87,8 @@ async fn inbox(
                 note: e.note,
                 status: e.status,
                 created_at_epoch: e.created_epoch,
+                prospect_name: e.prospect_name,
+                email: e.prospect_email,
             })
             .collect(),
     ))

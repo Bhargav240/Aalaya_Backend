@@ -16,7 +16,16 @@ impl PgEnquiryRepository {
     }
 }
 
-type Row = (Uuid, Uuid, String, Option<String>, String, i64);
+type Row = (
+    Uuid,
+    Uuid,
+    String,
+    Option<String>,
+    String,
+    i64,
+    Option<String>,
+    Option<String>,
+);
 fn row(r: Row) -> EnquiryRecord {
     EnquiryRecord {
         id: r.0,
@@ -25,6 +34,8 @@ fn row(r: Row) -> EnquiryRecord {
         note: r.3,
         status: r.4,
         created_epoch: r.5,
+        prospect_name: r.6,
+        prospect_email: r.7,
     }
 }
 
@@ -57,8 +68,14 @@ impl EnquiryRepository for PgEnquiryRepository {
 
     async fn list_for_branch(&self, branch_id: BranchId) -> Result<Vec<EnquiryRecord>, AppError> {
         let rows: Vec<Row> = sqlx::query_as(
-            "SELECT id, branch_id, phone, note, status, EXTRACT(EPOCH FROM created_at)::bigint \
-             FROM public.enquiries WHERE branch_id=$1 ORDER BY created_at DESC LIMIT 500",
+            "SELECT e.id, e.branch_id, \
+                    COALESCE(NULLIF(e.phone, 'email-authenticated'), u.phone, u.email, 'No contact') as phone, \
+                    e.note, e.status, EXTRACT(EPOCH FROM e.created_at)::bigint, \
+                    u.full_name, u.email \
+             FROM public.enquiries e \
+             LEFT JOIN public.platform_users u ON u.id = e.prospect_id \
+             WHERE e.branch_id=$1 AND e.status != 'closed' \
+             ORDER BY e.created_at DESC LIMIT 500",
         )
         .bind(branch_id.as_uuid())
         .fetch_all(&self.pool)
@@ -69,8 +86,14 @@ impl EnquiryRepository for PgEnquiryRepository {
 
     async fn list_for_org(&self, org_id: OrgId) -> Result<Vec<EnquiryRecord>, AppError> {
         let rows: Vec<Row> = sqlx::query_as(
-            "SELECT id, branch_id, phone, note, status, EXTRACT(EPOCH FROM created_at)::bigint \
-             FROM public.enquiries WHERE org_id=$1 ORDER BY created_at DESC LIMIT 500",
+            "SELECT e.id, e.branch_id, \
+                    COALESCE(NULLIF(e.phone, 'email-authenticated'), u.phone, u.email, 'No contact') as phone, \
+                    e.note, e.status, EXTRACT(EPOCH FROM e.created_at)::bigint, \
+                    u.full_name, u.email \
+             FROM public.enquiries e \
+             LEFT JOIN public.platform_users u ON u.id = e.prospect_id \
+             WHERE e.org_id=$1 AND e.status != 'closed' \
+             ORDER BY e.created_at DESC LIMIT 500",
         )
         .bind(org_id.as_uuid())
         .fetch_all(&self.pool)

@@ -478,6 +478,77 @@ async fn apply_change(
     Ok(())
 }
 
+fn format_change_description(
+    entity_type: &str,
+    operation: &str,
+    entity_name: Option<&str>,
+    proposed: Option<&serde_json::Value>,
+    target_floor_name: Option<&str>,
+) -> String {
+    let name_str = entity_name.unwrap_or("");
+    match operation {
+        "delete" => {
+            if name_str.is_empty() {
+                format!("Delete {entity_type}")
+            } else {
+                format!("Delete {entity_type} {name_str}")
+            }
+        }
+        "create" => {
+            if name_str.is_empty() {
+                format!("Create {entity_type}")
+            } else {
+                format!("Create {entity_type} {name_str}")
+            }
+        }
+        "update" => {
+            if let Some(payload) = proposed {
+                let mut parts = Vec::new();
+                if let Some(rent) = payload.get("rent_paise").and_then(|v| v.as_i64()) {
+                    parts.push(format!("Revise rent to ₹{}", rent / 100));
+                }
+                if let Some(dep) = payload.get("deposit_paise").and_then(|v| v.as_i64()) {
+                    parts.push(format!("Revise deposit to ₹{}", dep / 100));
+                }
+                if let Some(phone) = payload.get("phone").and_then(|v| v.as_str()) {
+                    parts.push(format!("Update phone to {phone}"));
+                }
+                if let Some(plan) = payload.get("plan_kind").and_then(|v| v.as_str()) {
+                    parts.push(format!("Change plan to {plan}"));
+                }
+                if let Some(cooling) = payload.get("cooling_type").and_then(|v| v.as_str()) {
+                    parts.push(format!("Change cooling to {cooling}"));
+                }
+                if payload.get("floor_id").is_some() {
+                    if let Some(t_floor) = target_floor_name {
+                        parts.push(format!("Move to {t_floor}"));
+                    } else {
+                        parts.push("Move to another floor".to_string());
+                    }
+                }
+                if let Some(full_name) = payload.get("full_name").and_then(|v| v.as_str()) {
+                    parts.push(format!("Rename to {full_name}"));
+                }
+                if let Some(name) = payload.get("name").and_then(|v| v.as_str()) {
+                    parts.push(format!("Rename to {name}"));
+                }
+                if let Some(label) = payload.get("label").and_then(|v| v.as_str()) {
+                    parts.push(format!("Rename to {label}"));
+                }
+                if !parts.is_empty() {
+                    return parts.join(", ");
+                }
+            }
+            if name_str.is_empty() {
+                format!("Update {entity_type}")
+            } else {
+                format!("Update {entity_type} {name_str}")
+            }
+        }
+        _ => format!("{operation} {entity_type}"),
+    }
+}
+
 #[async_trait]
 impl ChangeRequestRepository for PgChangeRequestRepository {
     async fn apply_now(
@@ -520,18 +591,65 @@ impl ChangeRequestRepository for PgChangeRequestRepository {
         Ok(id)
     }
 
-    async fn list_pending(
+    async fn list_changes(
         &self,
         ctx: &TenantContext,
+        status: Option<&str>,
     ) -> Result<Vec<ChangeRequestSummary>, AppError> {
         let org = ctx.org_id.as_uuid();
         let mut tx = scoped_tx(&self.pool, ctx).await?;
-        let rows: Vec<(Uuid, String, Uuid, String, String, Uuid)> = sqlx::query_as(
-            "SELECT id, entity_type, entity_id, operation, status, requested_by \
-             FROM change_requests WHERE org_id = $1 AND status = 'pending' \
-             ORDER BY created_at LIMIT 500",
+        let rows: Vec<(
+            Uuid,
+            String,
+            Uuid,
+            String,
+            String,
+            Uuid,
+            Option<serde_json::Value>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<Uuid>,
+            Option<String>,
+        )> = sqlx::query_as(
+            "SELECT \
+                cr.id, \
+                cr.entity_type, \
+                cr.entity_id, \
+                cr.operation, \
+                cr.status, \
+                cr.requested_by, \
+                cr.proposed, \
+                u.full_name AS requested_by_name, \
+                CASE cr.entity_type \
+                    WHEN 'resident' THEN COALESCE(cr.proposed->>'full_name', res.full_name) \
+                    WHEN 'floor'    THEN COALESCE(cr.proposed->>'name', fl.name) \
+                    WHEN 'room'     THEN COALESCE(cr.proposed->>'number', rm.number) \
+                    WHEN 'bed'      THEN COALESCE(cr.proposed->>'label', b.label) \
+                    WHEN 'branch'   THEN COALESCE(cr.proposed->>'name', br.name) \
+                    ELSE NULL \
+                END AS entity_name, \
+                target_fl.name AS target_floor_name, \
+                to_char(cr.created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at, \
+                to_char(cr.decided_at, 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS decided_at, \
+                cr.decided_by, \
+                decider.full_name AS decided_by_name \
+             FROM change_requests cr \
+             LEFT JOIN public.platform_users u ON u.id = cr.requested_by \
+             LEFT JOIN public.platform_users decider ON decider.id = cr.decided_by \
+             LEFT JOIN residents res ON cr.entity_type = 'resident' AND res.id = cr.entity_id \
+             LEFT JOIN floors fl ON cr.entity_type = 'floor' AND fl.id = cr.entity_id \
+             LEFT JOIN rooms rm ON cr.entity_type = 'room' AND rm.id = cr.entity_id \
+             LEFT JOIN beds b ON cr.entity_type = 'bed' AND b.id = cr.entity_id \
+             LEFT JOIN branches br ON cr.entity_type = 'branch' AND br.id = cr.entity_id \
+             LEFT JOIN floors target_fl ON target_fl.id = (CASE WHEN cr.proposed->>'floor_id' ~ '^[0-9a-fA-F-]{36}$' THEN (cr.proposed->>'floor_id')::uuid ELSE NULL END) \
+             WHERE cr.org_id = $1 AND ($2::text IS NULL OR $2 = 'all' OR cr.status = $2) \
+             ORDER BY cr.created_at DESC LIMIT 500",
         )
         .bind(org)
+        .bind(status)
         .fetch_all(&mut *tx)
         .await
         .map_err(map_sqlx)?;
@@ -539,14 +657,44 @@ impl ChangeRequestRepository for PgChangeRequestRepository {
         Ok(rows
             .into_iter()
             .map(
-                |(id, entity_type, entity_id, operation, status, requested_by)| {
+                |(
+                    id,
+                    entity_type,
+                    entity_id,
+                    operation,
+                    status,
+                    requested_by,
+                    proposed,
+                    requested_by_name,
+                    entity_name,
+                    target_floor_name,
+                    created_at,
+                    decided_at,
+                    decided_by,
+                    decided_by_name,
+                )| {
+                    let description = format_change_description(
+                        &entity_type,
+                        &operation,
+                        entity_name.as_deref(),
+                        proposed.as_ref(),
+                        target_floor_name.as_deref(),
+                    );
                     ChangeRequestSummary {
                         id,
                         entity_type,
                         entity_id,
+                        entity_name,
                         operation,
                         status,
                         requested_by,
+                        requested_by_name,
+                        proposed,
+                        description: Some(description),
+                        created_at,
+                        decided_at,
+                        decided_by,
+                        decided_by_name,
                     }
                 },
             )

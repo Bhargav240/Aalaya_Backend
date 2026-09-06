@@ -24,6 +24,7 @@ struct AuditOut {
     entity_type: Option<String>,
     entity_id: Option<String>,
     actor_id: Option<String>,
+    actor_name: Option<String>,
     at_epoch: i64,
 }
 
@@ -45,6 +46,7 @@ async fn list(
                 entity_type: a.entity_type,
                 entity_id: a.entity_id.map(|e| e.to_string()),
                 actor_id: a.actor_id.map(|e| e.to_string()),
+                actor_name: a.actor_name,
                 at_epoch: a.created_at_epoch,
             })
             .collect(),

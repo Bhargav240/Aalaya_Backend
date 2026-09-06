@@ -98,6 +98,9 @@ async fn create(
     AuthUser(claims): AuthUser,
     Json(req): Json<CreateBranchReq>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
+    if claims.role == Role::Owner || claims.role == Role::Manager {
+        return Err(pg_application::AppError::Forbidden.into());
+    }
     let deps = state.deps()?;
     let ctx = resolve_ctx(deps, claims.org_id).await?;
     let actor = actor_of(&claims);
@@ -129,6 +132,9 @@ async fn create_with_layout(
     AuthUser(claims): AuthUser,
     Json(req): Json<CreateBranchWithLayoutReq>,
 ) -> Result<Json<CreateBranchWithLayoutResp>, ApiError> {
+    if claims.role == Role::Owner || claims.role == Role::Manager {
+        return Err(pg_application::AppError::Forbidden.into());
+    }
     let deps = state.deps()?;
     let ctx = resolve_ctx(deps, claims.org_id).await?;
     let actor = actor_of(&claims);

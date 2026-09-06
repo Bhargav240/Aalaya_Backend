@@ -243,6 +243,14 @@ impl UserRepository for FakeUserRepo {
     async fn expected_name(&self, _user_id: UserId) -> Result<Option<String>, AppError> {
         Ok(self.expected_name.lock().expect("poisoned").clone())
     }
+    async fn update_profile(
+        &self,
+        _user_id: UserId,
+        _full_name: Option<&str>,
+        _phone: Option<&str>,
+    ) -> Result<(), AppError> {
+        Ok(())
+    }
     async fn find_by_google_sub(
         &self,
         sub: &str,
@@ -845,11 +853,12 @@ impl ChangeRequestRepository for FakeChangeRequestRepo {
         ));
         Ok(id)
     }
-    async fn list_pending(
+    async fn list_changes(
         &self,
         _ctx: &TenantContext,
+        _status: Option<&str>,
     ) -> Result<Vec<ChangeRequestSummary>, AppError> {
-        unimplemented!("FakeChangeRequestRepo::list_pending")
+        Ok(vec![])
     }
     async fn approve(
         &self,

@@ -109,6 +109,8 @@ async fn failed_delivery_discards_the_new_challenge() {
         window_secs: 900,
         otp_ttl_secs: 600,
         email: "new@example.com",
+        full_name: None,
+        phone: None,
     })
     .await;
 
@@ -148,6 +150,8 @@ async fn nonexistent_and_wrong_codes_share_the_unauthorized_result() {
             otp_max_attempts: 5,
             email,
             code: "000000",
+            full_name: None,
+            phone: None,
         })
         .await;
         assert!(matches!(result, Err(AppError::Unauthorized)));
@@ -187,6 +191,8 @@ async fn valid_email_code_issues_and_persists_a_rotating_session() {
         otp_max_attempts: 5,
         email: "person@example.com",
         code: "123456",
+        full_name: None,
+        phone: None,
     })
     .await
     .expect("valid code");

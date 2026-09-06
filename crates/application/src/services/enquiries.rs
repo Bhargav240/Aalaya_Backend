@@ -6,14 +6,15 @@ use uuid::Uuid;
 
 pub struct AuthenticatedEnquiryCommand<'a> {
     pub enquiry_repo: &'a dyn EnquiryRepository,
+    pub user_repo: &'a dyn UserRepository,
     pub branch_id: BranchId,
     pub user_id: UserId,
     pub note: Option<&'a str>,
+    pub phone: Option<&'a str>,
 }
 
-/// Enquiries are now submitted by an authenticated explorer. The legacy
-/// `phone` field remains the contact column until the broader contact-data
-/// migration; storing the stable user ID is the authorization boundary.
+/// Enquiries are submitted by an authenticated explorer. The contact phone/email
+/// is captured and stored on the lead and the explorer's profile.
 pub async fn create_authenticated_enquiry(
     command: AuthenticatedEnquiryCommand<'_>,
 ) -> Result<(), AppError> {
@@ -22,6 +23,19 @@ pub async fn create_authenticated_enquiry(
         .org_of_branch(command.branch_id)
         .await?
         .ok_or(AppError::NotFound)?;
+
+    if let Some(p) = command.phone.filter(|s| !s.trim().is_empty()) {
+        let _ = command.user_repo.update_profile(command.user_id, None, Some(p)).await;
+    }
+
+    let contact = if let Some(p) = command.phone.filter(|s| !s.trim().is_empty()) {
+        p.to_string()
+    } else if let Ok(Some(email)) = command.user_repo.verified_email_of(command.user_id).await {
+        email
+    } else {
+        "email-authenticated".to_string()
+    };
+
     command
         .enquiry_repo
         .create(
@@ -29,7 +43,7 @@ pub async fn create_authenticated_enquiry(
             org_id,
             command.branch_id,
             command.user_id,
-            "email-authenticated",
+            &contact,
             command.note,
         )
         .await

@@ -26,11 +26,14 @@ impl AuditRepository for PgAuditRepository {
     ) -> Result<Vec<AuditSummary>, AppError> {
         let org = ctx.org_id.as_uuid();
         let mut tx = scoped_tx(&self.pool, ctx).await?;
-        let rows: Vec<(i64, String, Option<String>, Option<Uuid>, Option<Uuid>, i64)> =
+        let rows: Vec<(i64, String, Option<String>, Option<Uuid>, Option<Uuid>, Option<String>, i64)> =
             sqlx::query_as(
-                "SELECT id, action, entity_type, entity_id, actor_id, \
-                 EXTRACT(EPOCH FROM created_at)::bigint \
-                 FROM audit_log WHERE org_id = $1 ORDER BY id DESC LIMIT $2",
+                "SELECT a.id, a.action, a.entity_type, a.entity_id, a.actor_id, \
+                 u.full_name, \
+                 EXTRACT(EPOCH FROM a.created_at)::bigint \
+                 FROM audit_log a \
+                 LEFT JOIN public.platform_users u ON u.id = a.actor_id \
+                 WHERE a.org_id = $1 ORDER BY a.id DESC LIMIT $2",
             )
             .bind(org)
             .bind(limit)
@@ -41,12 +44,13 @@ impl AuditRepository for PgAuditRepository {
         Ok(rows
             .into_iter()
             .map(
-                |(id, action, entity_type, entity_id, actor_id, epoch)| AuditSummary {
+                |(id, action, entity_type, entity_id, actor_id, actor_name, epoch)| AuditSummary {
                     id,
                     action,
                     entity_type,
                     entity_id,
                     actor_id,
+                    actor_name,
                     created_at_epoch: epoch,
                 },
             )

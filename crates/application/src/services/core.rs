@@ -24,7 +24,7 @@ pub async fn create_branch(
     actor: &AuditActor,
     name: String,
 ) -> Result<BranchId, AppError> {
-    if !authz::is_owner(role) {
+    if role == Role::Owner || role == Role::Manager || !authz::is_operator(role) {
         return Err(AppError::Forbidden);
     }
     let id = BranchId::new(Uuid::new_v4());
@@ -342,15 +342,24 @@ pub async fn edit_entity(
     }
 }
 
+pub async fn list_changes(
+    cr: &dyn ChangeRequestRepository,
+    ctx: &TenantContext,
+    role: Role,
+    status: Option<&str>,
+) -> Result<Vec<ChangeRequestSummary>, AppError> {
+    if !authz::is_owner(role) {
+        return Err(AppError::Forbidden);
+    }
+    cr.list_changes(ctx, status).await
+}
+
 pub async fn list_pending_changes(
     cr: &dyn ChangeRequestRepository,
     ctx: &TenantContext,
     role: Role,
 ) -> Result<Vec<ChangeRequestSummary>, AppError> {
-    if !authz::is_owner(role) {
-        return Err(AppError::Forbidden);
-    }
-    cr.list_pending(ctx).await
+    list_changes(cr, ctx, role, Some("pending")).await
 }
 
 pub async fn approve_change(

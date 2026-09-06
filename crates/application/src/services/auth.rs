@@ -52,6 +52,8 @@ pub struct RequestEmailOtpCommand<'a> {
     pub window_secs: i64,
     pub otp_ttl_secs: i64,
     pub email: &'a str,
+    pub full_name: Option<&'a str>,
+    pub phone: Option<&'a str>,
 }
 
 pub async fn request_email_otp(command: RequestEmailOtpCommand<'_>) -> Result<(), AppError> {
@@ -77,13 +79,28 @@ pub async fn request_email_otp(command: RequestEmailOtpCommand<'_>) -> Result<()
         ));
     }
     let user = match command.user_repo.find_by_email(&email).await? {
-        Some(user) if user.status == UserStatus::Active => user,
+        Some(user) if user.status == UserStatus::Active => {
+            if command.full_name.is_some() || command.phone.is_some() {
+                let _ = command
+                    .user_repo
+                    .update_profile(user.user_id, command.full_name, command.phone)
+                    .await;
+            }
+            user
+        }
         Some(_) => return Ok(()),
         None => {
-            command
+            let record = command
                 .user_repo
                 .create_email_explorer(UserId::new(Uuid::new_v4()), command.platform_org_id, &email)
-                .await?
+                .await?;
+            if command.full_name.is_some() || command.phone.is_some() {
+                let _ = command
+                    .user_repo
+                    .update_profile(record.user_id, command.full_name, command.phone)
+                    .await;
+            }
+            record
         }
     };
     let code = command.codegen.generate();
@@ -123,6 +140,8 @@ pub struct VerifyEmailOtpCommand<'a> {
     pub otp_max_attempts: i32,
     pub email: &'a str,
     pub code: &'a str,
+    pub full_name: Option<&'a str>,
+    pub phone: Option<&'a str>,
 }
 
 pub async fn verify_email_otp(command: VerifyEmailOtpCommand<'_>) -> Result<TokenPair, AppError> {
@@ -149,6 +168,12 @@ pub async fn verify_email_otp(command: VerifyEmailOtpCommand<'_>) -> Result<Toke
         return Err(AppError::Unauthorized);
     }
     let user = user.ok_or(AppError::Unauthorized)?;
+    if command.full_name.is_some() || command.phone.is_some() {
+        let _ = command
+            .user_repo
+            .update_profile(user.user_id, command.full_name, command.phone)
+            .await;
+    }
     command.user_repo.mark_email_verified(user.user_id).await?;
     issue_and_store(
         command.tokens,

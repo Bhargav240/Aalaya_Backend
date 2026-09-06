@@ -309,4 +309,25 @@ impl UserRepository for PgUserRepository {
                 .map_err(map_sqlx)?;
         Ok(row.map(|(v,)| v).unwrap_or(false))
     }
+
+    async fn update_profile(
+        &self,
+        user_id: UserId,
+        full_name: Option<&str>,
+        phone: Option<&str>,
+    ) -> Result<(), AppError> {
+        sqlx::query(
+            "UPDATE public.platform_users \
+             SET full_name = COALESCE($2, full_name), \
+                 phone = COALESCE($3, phone) \
+             WHERE id = $1",
+        )
+        .bind(user_id.as_uuid())
+        .bind(full_name.filter(|s| !s.trim().is_empty()))
+        .bind(phone.filter(|s| !s.trim().is_empty()))
+        .execute(&self.pool)
+        .await
+        .map_err(map_sqlx)?;
+        Ok(())
+    }
 }

@@ -172,6 +172,12 @@ pub trait UserRepository: Send + Sync {
     }
     /// The registered (expected) Aadhaar name for identity matching.
     async fn expected_name(&self, user_id: UserId) -> Result<Option<String>, AppError>;
+    async fn update_profile(
+        &self,
+        user_id: UserId,
+        full_name: Option<&str>,
+        phone: Option<&str>,
+    ) -> Result<(), AppError>;
     async fn mark_verified(&self, user_id: UserId) -> Result<(), AppError>;
     async fn is_verified(&self, user_id: UserId) -> Result<bool, AppError>;
 }
@@ -268,6 +274,8 @@ pub struct EnquiryRecord {
     pub note: Option<String>,
     pub status: String,
     pub created_epoch: i64,
+    pub prospect_name: Option<String>,
+    pub prospect_email: Option<String>,
 }
 
 #[async_trait]
@@ -670,9 +678,17 @@ pub struct ChangeRequestSummary {
     pub id: Uuid,
     pub entity_type: String,
     pub entity_id: Uuid,
+    pub entity_name: Option<String>,
     pub operation: String,
     pub status: String,
     pub requested_by: Uuid,
+    pub requested_by_name: Option<String>,
+    pub proposed: Option<Value>,
+    pub description: Option<String>,
+    pub created_at: Option<String>,
+    pub decided_at: Option<String>,
+    pub decided_by: Option<Uuid>,
+    pub decided_by_name: Option<String>,
 }
 
 #[async_trait]
@@ -689,10 +705,17 @@ pub trait ChangeRequestRepository: Send + Sync {
         target: &ChangeTarget,
         requested_by: UserId,
     ) -> Result<Uuid, AppError>;
+    async fn list_changes(
+        &self,
+        ctx: &TenantContext,
+        status: Option<&str>,
+    ) -> Result<Vec<ChangeRequestSummary>, AppError>;
     async fn list_pending(
         &self,
         ctx: &TenantContext,
-    ) -> Result<Vec<ChangeRequestSummary>, AppError>;
+    ) -> Result<Vec<ChangeRequestSummary>, AppError> {
+        self.list_changes(ctx, Some("pending")).await
+    }
     async fn approve(
         &self,
         ctx: &TenantContext,
@@ -714,6 +737,7 @@ pub struct AuditSummary {
     pub entity_type: Option<String>,
     pub entity_id: Option<Uuid>,
     pub actor_id: Option<Uuid>,
+    pub actor_name: Option<String>,
     pub created_at_epoch: i64,
 }
 
@@ -1061,3 +1085,4 @@ pub trait FinanceRepository: Send + Sync {
         branch_id: BranchId,
     ) -> Result<Vec<ResidentDue>, AppError>;
 }
+

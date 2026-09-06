@@ -17,10 +17,29 @@ use uuid::Uuid;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/me", get(me))
+        .route("/me/profile", axum::routing::post(update_profile))
         .route("/me/memberships", get(memberships))
         .route("/me/receipts", get(my_receipts))
         .route("/me/receipts/{id}/download", get(my_receipt_download))
         .route("/me/ledger", get(my_ledger))
+}
+
+#[derive(serde::Deserialize)]
+struct UpdateProfileReq {
+    full_name: Option<String>,
+    phone: Option<String>,
+}
+
+async fn update_profile(
+    State(state): State<AppState>,
+    AuthUser(claims): AuthUser,
+    Json(req): Json<UpdateProfileReq>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let deps = state.deps()?;
+    deps.user_repo
+        .update_profile(claims.user_id, req.full_name.as_deref(), req.phone.as_deref())
+        .await?;
+    Ok(Json(serde_json::json!({ "status": "ok" })))
 }
 
 #[derive(Serialize)]

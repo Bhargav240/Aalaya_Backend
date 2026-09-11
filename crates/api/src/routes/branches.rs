@@ -48,15 +48,16 @@ async fn list(
         Role::Manager => {
             let assigned = deps
                 .user_repo
-                .branch_in_org(claims.user_id, claims.org_id)
-                .await?
-                .map(|branch| branch.as_uuid());
-            deps.branch_repo
-                .list(&ctx)
-                .await?
-                .into_iter()
-                .filter(|branch| Some(branch.id) == assigned)
-                .collect()
+                .branches_in_org(claims.user_id, claims.org_id)
+                .await?;
+            let all = deps.branch_repo.list(&ctx).await?;
+            if assigned.is_empty() {
+                all
+            } else {
+                let set: std::collections::HashSet<_> =
+                    assigned.into_iter().map(|b| b.as_uuid()).collect();
+                all.into_iter().filter(|b| set.contains(&b.id)).collect()
+            }
         }
         Role::Tenant | Role::PlatformOperator | Role::Prospect => {
             return Err(pg_application::AppError::Forbidden.into())
@@ -98,7 +99,7 @@ async fn create(
     AuthUser(claims): AuthUser,
     Json(req): Json<CreateBranchReq>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    if claims.role == Role::Owner || claims.role == Role::Manager {
+    if claims.role != Role::Owner {
         return Err(pg_application::AppError::Forbidden.into());
     }
     let deps = state.deps()?;
@@ -132,7 +133,7 @@ async fn create_with_layout(
     AuthUser(claims): AuthUser,
     Json(req): Json<CreateBranchWithLayoutReq>,
 ) -> Result<Json<CreateBranchWithLayoutResp>, ApiError> {
-    if claims.role == Role::Owner || claims.role == Role::Manager {
+    if claims.role != Role::Owner {
         return Err(pg_application::AppError::Forbidden.into());
     }
     let deps = state.deps()?;

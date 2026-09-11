@@ -35,10 +35,17 @@ async fn require_branch_finance_access(
 ) -> Result<(), AppError> {
     match role {
         Role::Owner => Ok(()),
-        Role::Manager if user_repo.branch_in_org(user_id, ctx.org_id).await? == Some(branch_id) => {
-            Ok(())
+        Role::Manager => {
+            if user_repo
+                .has_branch_access(user_id, ctx.org_id, branch_id)
+                .await?
+            {
+                Ok(())
+            } else {
+                Err(AppError::Forbidden)
+            }
         }
-        Role::Manager | Role::Tenant | Role::PlatformOperator | Role::Prospect => {
+        Role::Tenant | Role::PlatformOperator | Role::Prospect => {
             Err(AppError::Forbidden)
         }
     }

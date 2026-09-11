@@ -563,12 +563,17 @@ async fn require_staff_scope(
 ) -> Result<(), AppError> {
     match actor_role {
         Role::Owner => Ok(()),
-        Role::Manager
-            if users.branch_in_org(actor_id, actor_org_id).await? == Some(invitation_branch) =>
-        {
-            Ok(())
+        Role::Manager => {
+            if users
+                .has_branch_access(actor_id, actor_org_id, invitation_branch)
+                .await?
+            {
+                Ok(())
+            } else {
+                Err(AppError::Forbidden)
+            }
         }
-        Role::Manager | Role::Tenant | Role::Prospect | Role::PlatformOperator => {
+        Role::Tenant | Role::Prospect | Role::PlatformOperator => {
             Err(AppError::Forbidden)
         }
     }

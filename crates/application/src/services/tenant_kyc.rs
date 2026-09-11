@@ -215,9 +215,12 @@ pub async fn manual_kyc_review(command: ManualKycReviewCommand<'_>) -> Result<()
         Role::Manager
             if command
                 .users
-                .branch_in_org(command.actor_id, command.actor_org_id)
-                .await?
-                == Some(invitation.branch_id) => {}
+                .has_branch_access(
+                    command.actor_id,
+                    command.actor_org_id,
+                    invitation.branch_id,
+                )
+                .await? => {}
         _ => return Err(AppError::Forbidden),
     }
     let reason = command.reason.trim();
@@ -249,8 +252,9 @@ async fn authorize_view(
         Role::Owner if actor_org_id == invitation.org_id => Ok(()),
         Role::Manager
             if actor_org_id == invitation.org_id
-                && users.branch_in_org(actor_id, actor_org_id).await?
-                    == Some(invitation.branch_id) =>
+                && users
+                    .has_branch_access(actor_id, actor_org_id, invitation.branch_id)
+                    .await? =>
         {
             Ok(())
         }

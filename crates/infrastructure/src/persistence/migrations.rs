@@ -27,6 +27,8 @@ const INVITATION_PLAN_KIND: &str =
     include_str!("../../../../migrations/control_plane/0010_invitation_plan_kind.sql");
 const INVITATION_DAILY_PLAN: &str =
     include_str!("../../../../migrations/control_plane/0011_invitation_daily_plan.sql");
+const MANAGER_MULTI_BRANCH: &str =
+    include_str!("../../../../migrations/control_plane/0012_manager_multi_branch.sql");
 const TENANT: &str = include_str!("../../../../migrations/tenant/0001_init.sql");
 const TENANT_MEMBERSHIP_LINKS: &str =
     include_str!("../../../../migrations/tenant/0002_membership_links.sql");
@@ -131,6 +133,13 @@ async fn run_locked(conn: &mut sqlx::PgConnection) -> anyhow::Result<()> {
             .execute(&mut *conn)
             .await?;
         record_migration_version(conn, "public", "0011_invitation_daily_plan").await?;
+    }
+    if !migration_version_applied(conn, "public", "0012_manager_multi_branch").await? {
+        info!("applying manager multi-branch migration");
+        sqlx::raw_sql(MANAGER_MULTI_BRANCH)
+            .execute(&mut *conn)
+            .await?;
+        record_migration_version(conn, "public", "0012_manager_multi_branch").await?;
     }
 
     if !migration_applied(conn, "pool").await? {

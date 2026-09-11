@@ -54,6 +54,8 @@ struct RequestEmailOtpReq {
     email: String,
     full_name: Option<String>,
     phone: Option<String>,
+    intent: Option<String>,
+    is_signup: Option<bool>,
 }
 
 /// Sign-in step 1: send a one-time code by email.
@@ -62,6 +64,13 @@ async fn request_email_otp(
     Json(req): Json<RequestEmailOtpReq>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let deps = state.deps()?;
+    let is_signup = req.is_signup.or_else(|| {
+        req.intent.as_deref().map(|i| match i.to_lowercase().as_str() {
+            "signup" | "sign_up" | "register" => true,
+            "login" | "log_in" | "signin" | "sign_in" => false,
+            _ => true,
+        })
+    });
     services::request_email_otp(services::RequestEmailOtpCommand {
         user_repo: deps.user_repo.as_ref(),
         otp_repo: deps.email_otp_repo.as_ref(),
@@ -75,6 +84,7 @@ async fn request_email_otp(
         email: &req.email,
         full_name: req.full_name.as_deref(),
         phone: req.phone.as_deref(),
+        is_signup,
     })
     .await?;
     Ok(Json(json!({ "status": "sent" })))

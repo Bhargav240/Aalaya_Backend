@@ -170,6 +170,26 @@ pub trait UserRepository: Send + Sync {
     ) -> Result<Option<BranchId>, AppError> {
         self.branch_of(user_id).await
     }
+    /// Branches explicitly assigned to this user in the selected organization.
+    async fn branches_in_org(
+        &self,
+        user_id: UserId,
+        org_id: OrgId,
+    ) -> Result<Vec<BranchId>, AppError> {
+        let one = self.branch_in_org(user_id, org_id).await?;
+        Ok(one.into_iter().collect())
+    }
+    /// Whether a manager has access to the given branch in the organization
+    /// (either explicitly assigned or assigned org-wide).
+    async fn has_branch_access(
+        &self,
+        user_id: UserId,
+        org_id: OrgId,
+        branch_id: BranchId,
+    ) -> Result<bool, AppError> {
+        let assigned = self.branch_in_org(user_id, org_id).await?;
+        Ok(assigned == Some(branch_id))
+    }
     /// The registered (expected) Aadhaar name for identity matching.
     async fn expected_name(&self, user_id: UserId) -> Result<Option<String>, AppError>;
     async fn update_profile(
@@ -774,6 +794,9 @@ pub struct ComplaintSummary {
     pub created_at: OffsetDateTime,
     /// Moves every time the state does, so it reads as "last updated".
     pub updated_at: OffsetDateTime,
+    pub tenant_name: Option<String>,
+    pub floor_number: Option<String>,
+    pub room_number: Option<String>,
 }
 
 pub struct ComplaintStateRow {

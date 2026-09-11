@@ -42,7 +42,20 @@ pub async fn raise_complaint(command: RaiseComplaintCommand<'_>) -> Result<Uuid,
     }
     let (branch, is_biz) = match role {
         Role::Owner => (branch_id_req, business_level),
-        Role::Manager | Role::Tenant => {
+        Role::Manager => {
+            let b = match branch_id_req {
+                Some(bid) => {
+                    if user_repo.has_branch_access(user_id, ctx.org_id, bid).await? {
+                        Some(bid)
+                    } else {
+                        return Err(AppError::Forbidden);
+                    }
+                }
+                None => user_repo.branch_in_org(user_id, ctx.org_id).await?,
+            };
+            (b, false)
+        }
+        Role::Tenant => {
             (user_repo.branch_in_org(user_id, ctx.org_id).await?, false)
         }
         Role::PlatformOperator | Role::Prospect => return Err(AppError::Forbidden),
@@ -63,18 +76,29 @@ pub async fn raise_complaint(command: RaiseComplaintCommand<'_>) -> Result<Uuid,
     Ok(id.as_uuid())
 }
 
-/// Visibility: tenant -> own; manager -> own branch, non-business; owner -> all.
+/// Visibility: tenant -> own; manager -> own branch(es), non-business; owner -> all (or selected branch).
 pub async fn list_complaints(
     complaint_repo: &dyn ComplaintRepository,
     user_repo: &dyn UserRepository,
     ctx: &TenantContext,
     role: Role,
     user_id: UserId,
+    branch_req: Option<BranchId>,
 ) -> Result<Vec<ComplaintSummary>, AppError> {
-    let branch = if authz::is_owner(role) {
-        None
-    } else {
-        user_repo.branch_in_org(user_id, ctx.org_id).await?
+    let branch = match role {
+        Role::Owner => branch_req,
+        Role::Manager => {
+            if let Some(req) = branch_req {
+                if user_repo.has_branch_access(user_id, ctx.org_id, req).await? {
+                    Some(req)
+                } else {
+                    return Err(AppError::Forbidden);
+                }
+            } else {
+                user_repo.branch_in_org(user_id, ctx.org_id).await?
+            }
+        }
+        Role::Tenant | Role::PlatformOperator | Role::Prospect => None,
     };
     complaint_repo
         .list_visible(ctx, role, user_id, branch)
@@ -112,11 +136,17 @@ pub async fn transition_complaint(command: TransitionComplaintCommand<'_>) -> Re
     match role {
         Role::Owner => {}
         Role::Manager => {
-            let mb = user_repo
-                .branch_in_org(user_id, ctx.org_id)
-                .await?
-                .map(|b| b.as_uuid());
-            if row.is_business_level || row.branch_id != mb {
+            if row.is_business_level {
+                return Err(AppError::Forbidden);
+            }
+            if let Some(bid) = row.branch_id {
+                if !user_repo
+                    .has_branch_access(user_id, ctx.org_id, BranchId::new(bid))
+                    .await?
+                {
+                    return Err(AppError::Forbidden);
+                }
+            } else {
                 return Err(AppError::Forbidden);
             }
         }

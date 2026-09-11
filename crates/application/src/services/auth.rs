@@ -54,6 +54,7 @@ pub struct RequestEmailOtpCommand<'a> {
     pub email: &'a str,
     pub full_name: Option<&'a str>,
     pub phone: Option<&'a str>,
+    pub is_signup: Option<bool>,
 }
 
 pub async fn request_email_otp(command: RequestEmailOtpCommand<'_>) -> Result<(), AppError> {
@@ -90,6 +91,11 @@ pub async fn request_email_otp(command: RequestEmailOtpCommand<'_>) -> Result<()
         }
         Some(_) => return Ok(()),
         None => {
+            if command.is_signup == Some(false) {
+                return Err(AppError::Validation(
+                    "No account found with this email. Please register first.".into(),
+                ));
+            }
             let record = command
                 .user_repo
                 .create_email_explorer(UserId::new(Uuid::new_v4()), command.platform_org_id, &email)

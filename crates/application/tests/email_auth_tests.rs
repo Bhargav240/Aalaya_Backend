@@ -111,6 +111,7 @@ async fn failed_delivery_discards_the_new_challenge() {
         email: "new@example.com",
         full_name: None,
         phone: None,
+        is_signup: Some(true),
     })
     .await;
 
@@ -119,6 +120,36 @@ async fn failed_delivery_discards_the_new_challenge() {
         *otps.created.lock().expect("created"),
         *otps.discarded.lock().expect("discarded")
     );
+}
+
+#[tokio::test]
+async fn login_rejected_if_user_does_not_exist() {
+    let users = FakeUserRepo::new();
+    let otps = FakeEmailOtpRepo::default();
+    let result = request_email_otp(RequestEmailOtpCommand {
+        user_repo: &users,
+        otp_repo: &otps,
+        codegen: &FixedCode,
+        sender: &FailingEmailSender,
+        platform_org_id: OrgId::new(Uuid::new_v4()),
+        resend_cooldown_secs: 30,
+        max_sends: 3,
+        window_secs: 900,
+        otp_ttl_secs: 600,
+        email: "unknown@example.com",
+        full_name: None,
+        phone: None,
+        is_signup: Some(false),
+    })
+    .await;
+
+    match result {
+        Err(AppError::Validation(msg)) => {
+            assert!(msg.contains("No account found with this email. Please register first."));
+        }
+        other => panic!("expected validation error, got {other:?}"),
+    }
+    assert_eq!(otps.created.lock().expect("created").len(), 0);
 }
 
 #[tokio::test]

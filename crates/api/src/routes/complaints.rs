@@ -69,20 +69,38 @@ struct ComplaintOut {
     /// Epoch seconds, matching every other timestamp the API returns.
     created_epoch: i64,
     updated_epoch: i64,
+    tenant_name: Option<String>,
+    floor_number: Option<String>,
+    room_number: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ListComplaintsQuery {
+    branch_id: Option<String>,
 }
 
 async fn list(
     State(state): State<AppState>,
     AuthUser(claims): AuthUser,
+    axum::extract::Query(query): axum::extract::Query<ListComplaintsQuery>,
 ) -> Result<Json<Vec<ComplaintOut>>, ApiError> {
     let deps = state.deps()?;
     let ctx = resolve_ctx(deps, claims.org_id).await?;
+    let branch_id = match query.branch_id {
+        Some(s) if !s.trim().is_empty() => {
+            Some(BranchId::new(Uuid::parse_str(&s).map_err(|_| {
+                AppError::Validation("invalid branch_id".into())
+            })?))
+        }
+        _ => None,
+    };
     let items = services::list_complaints(
         deps.complaint_repo.as_ref(),
         deps.user_repo.as_ref(),
         &ctx,
         claims.role,
         claims.user_id,
+        branch_id,
     )
     .await?;
     Ok(Json(
@@ -98,6 +116,9 @@ async fn list(
                 is_business_level: c.is_business_level,
                 created_epoch: c.created_at.unix_timestamp(),
                 updated_epoch: c.updated_at.unix_timestamp(),
+                tenant_name: c.tenant_name,
+                floor_number: c.floor_number,
+                room_number: c.room_number,
             })
             .collect(),
     ))

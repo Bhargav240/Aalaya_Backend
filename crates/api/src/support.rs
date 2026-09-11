@@ -44,14 +44,16 @@ pub async fn require_branch_management_scope(
 ) -> Result<(), AppError> {
     match claims.role {
         Role::Owner => Ok(()),
-        Role::Manager
+        Role::Manager => {
             if deps
                 .user_repo
-                .branch_in_org(claims.user_id, claims.org_id)
+                .has_branch_access(claims.user_id, claims.org_id, branch_id)
                 .await?
-                == Some(branch_id) =>
-        {
-            Ok(())
+            {
+                Ok(())
+            } else {
+                Err(AppError::Forbidden)
+            }
         }
         _ => Err(AppError::Forbidden),
     }
@@ -68,16 +70,20 @@ pub async fn require_resident_management_scope(
     match claims.role {
         Role::Owner => Ok(()),
         Role::Manager => {
-            let assigned = deps
-                .user_repo
-                .branch_in_org(claims.user_id, claims.org_id)
-                .await?;
             let resident = deps
                 .resident_repo
                 .get(ctx, resident_id)
                 .await?
                 .ok_or(AppError::NotFound)?;
-            if assigned.map(|id| id.as_uuid()) == Some(resident.branch_id) {
+            if deps
+                .user_repo
+                .has_branch_access(
+                    claims.user_id,
+                    claims.org_id,
+                    BranchId::new(resident.branch_id),
+                )
+                .await?
+            {
                 Ok(())
             } else {
                 Err(AppError::Forbidden)
@@ -99,16 +105,16 @@ pub async fn require_room_management_scope(
     match claims.role {
         Role::Owner => Ok(()),
         Role::Manager => {
-            let assigned = deps
-                .user_repo
-                .branch_in_org(claims.user_id, claims.org_id)
-                .await?;
             let branch = deps
                 .room_repo
                 .branch_of(ctx, room_id)
                 .await?
                 .ok_or(AppError::NotFound)?;
-            if assigned == Some(branch) {
+            if deps
+                .user_repo
+                .has_branch_access(claims.user_id, claims.org_id, branch)
+                .await?
+            {
                 Ok(())
             } else {
                 Err(AppError::Forbidden)

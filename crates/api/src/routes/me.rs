@@ -37,7 +37,11 @@ async fn update_profile(
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let deps = state.deps()?;
     deps.user_repo
-        .update_profile(claims.user_id, req.full_name.as_deref(), req.phone.as_deref())
+        .update_profile(
+            claims.user_id,
+            req.full_name.as_deref(),
+            req.phone.as_deref(),
+        )
         .await?;
     Ok(Json(serde_json::json!({ "status": "ok" })))
 }

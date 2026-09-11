@@ -117,17 +117,22 @@ impl ComplaintState {
             _ => None,
         }
     }
-    /// Allowed transitions, including the Resolved -> InProgress bounce-back.
+    /// Allowed transitions, including the Resolved -> InProgress bounce-back,
+    /// and Owner/Manager actions to move to InProgress or Closed.
     pub fn can_transition_to(self, to: ComplaintState) -> bool {
         use ComplaintState::*;
         matches!(
             (self, to),
             (Open, Assigned)
                 | (Open, InProgress)
+                | (Open, Closed)
                 | (Assigned, InProgress)
+                | (Assigned, Closed)
                 | (InProgress, Resolved)
+                | (InProgress, Closed)
                 | (Resolved, Closed)
                 | (Resolved, InProgress)
+                | (Closed, InProgress)
         )
     }
 }

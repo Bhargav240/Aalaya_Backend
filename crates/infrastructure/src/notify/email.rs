@@ -62,6 +62,7 @@ impl EmailSender for ResendEmailSender {
             .map(str::trim)
             .filter(|name| !name.is_empty())
             .unwrap_or("there");
+        tracing::warn!(otp_code = code, email, "Resend login OTP");
         let minutes = (ttl_secs + 59) / 60;
         let body = serde_json::json!({
             "from": self.from,

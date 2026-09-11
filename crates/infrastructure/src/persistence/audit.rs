@@ -26,20 +26,27 @@ impl AuditRepository for PgAuditRepository {
     ) -> Result<Vec<AuditSummary>, AppError> {
         let org = ctx.org_id.as_uuid();
         let mut tx = scoped_tx(&self.pool, ctx).await?;
-        let rows: Vec<(i64, String, Option<String>, Option<Uuid>, Option<Uuid>, Option<String>, i64)> =
-            sqlx::query_as(
-                "SELECT a.id, a.action, a.entity_type, a.entity_id, a.actor_id, \
+        let rows: Vec<(
+            i64,
+            String,
+            Option<String>,
+            Option<Uuid>,
+            Option<Uuid>,
+            Option<String>,
+            i64,
+        )> = sqlx::query_as(
+            "SELECT a.id, a.action, a.entity_type, a.entity_id, a.actor_id, \
                  u.full_name, \
                  EXTRACT(EPOCH FROM a.created_at)::bigint \
                  FROM audit_log a \
                  LEFT JOIN public.platform_users u ON u.id = a.actor_id \
                  WHERE a.org_id = $1 ORDER BY a.id DESC LIMIT $2",
-            )
-            .bind(org)
-            .bind(limit)
-            .fetch_all(&mut *tx)
-            .await
-            .map_err(map_sqlx)?;
+        )
+        .bind(org)
+        .bind(limit)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(map_sqlx)?;
         tx.commit().await.map_err(map_sqlx)?;
         Ok(rows
             .into_iter()

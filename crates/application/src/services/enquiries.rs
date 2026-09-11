@@ -25,7 +25,10 @@ pub async fn create_authenticated_enquiry(
         .ok_or(AppError::NotFound)?;
 
     if let Some(p) = command.phone.filter(|s| !s.trim().is_empty()) {
-        let _ = command.user_repo.update_profile(command.user_id, None, Some(p)).await;
+        let _ = command
+            .user_repo
+            .update_profile(command.user_id, None, Some(p))
+            .await;
     }
 
     let contact = if let Some(p) = command.phone.filter(|s| !s.trim().is_empty()) {

@@ -281,6 +281,46 @@ impl UserRepository for PgUserRepository {
         Ok(branch.map(BranchId::new))
     }
 
+    async fn branches_in_org(
+        &self,
+        user_id: UserId,
+        org_id: OrgId,
+    ) -> Result<Vec<BranchId>, AppError> {
+        let rows: Vec<Uuid> = sqlx::query_scalar(
+            "SELECT branch_id FROM public.user_org_roles \
+             WHERE user_id=$1 AND org_id=$2 AND membership_status='active' \
+               AND branch_id IS NOT NULL ORDER BY branch_id",
+        )
+        .bind(user_id.as_uuid())
+        .bind(org_id.as_uuid())
+        .fetch_all(&self.pool)
+        .await
+        .map_err(map_sqlx)?;
+        Ok(rows.into_iter().map(BranchId::new).collect())
+    }
+
+    async fn has_branch_access(
+        &self,
+        user_id: UserId,
+        org_id: OrgId,
+        branch_id: BranchId,
+    ) -> Result<bool, AppError> {
+        let has_access: bool = sqlx::query_scalar(
+            "SELECT EXISTS ( \
+                SELECT 1 FROM public.user_org_roles \
+                WHERE user_id=$1 AND org_id=$2 AND membership_status='active' \
+                  AND (branch_id IS NULL OR branch_id = $3) \
+            )",
+        )
+        .bind(user_id.as_uuid())
+        .bind(org_id.as_uuid())
+        .bind(branch_id.as_uuid())
+        .fetch_one(&self.pool)
+        .await
+        .map_err(map_sqlx)?;
+        Ok(has_access)
+    }
+
     async fn expected_name(&self, user_id: UserId) -> Result<Option<String>, AppError> {
         let row: Option<(Option<String>,)> =
             sqlx::query_as("SELECT full_name FROM public.platform_users WHERE id = $1")

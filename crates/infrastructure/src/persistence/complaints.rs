@@ -32,6 +32,9 @@ type Row = (
     bool,
     OffsetDateTime,
     OffsetDateTime,
+    Option<String>,
+    Option<String>,
+    Option<String>,
 );
 
 fn to_summary(r: Row) -> ComplaintSummary {
@@ -45,6 +48,9 @@ fn to_summary(r: Row) -> ComplaintSummary {
         is_business_level: r.6,
         created_at: r.7,
         updated_at: r.8,
+        tenant_name: r.9,
+        floor_number: r.10,
+        room_number: r.11,
     }
 }
 
@@ -65,12 +71,12 @@ impl ComplaintRepository for PgComplaintRepository {
         let org = ctx.org_id.as_uuid();
         let mut tx = scoped_tx(&self.pool, ctx).await?;
         sqlx::query(
-            "INSERT INTO complaints (id, org_id, branch_id, raised_by, title, description, state, is_business_level) \
-             VALUES ($1,$2,$3,$4,$5,$6,'open',$7)",
+            "INSERT INTO complaints (id, org_id, branch_id, raised_by, title, description, is_business_level) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7)",
         )
         .bind(id.as_uuid())
         .bind(org)
-        .bind(branch_id.map(|b| b.as_uuid()))
+        .bind(branch_id.map(|b| b.as_uuid().to_owned()))
         .bind(raised_by.as_uuid())
         .bind(title)
         .bind(description)
@@ -113,36 +119,66 @@ impl ComplaintRepository for PgComplaintRepository {
     ) -> Result<Vec<ComplaintSummary>, AppError> {
         let org = ctx.org_id.as_uuid();
         let mut tx = scoped_tx(&self.pool, ctx).await?;
-        let cols = "id, branch_id, raised_by, title, description, state, is_business_level, \
-                    created_at, updated_at";
+        let select_clause = "SELECT c.id, c.branch_id, c.raised_by, c.title, c.description, c.state, c.is_business_level, \
+                    c.created_at, c.updated_at, \
+                    COALESCE(res.full_name, u.full_name) AS tenant_name, \
+                    COALESCE(fl.name, CASE WHEN rm.number ~ '^[0-9]' THEN 'Floor ' || LEFT(rm.number, 1) WHEN rm.number ILIKE 'G%' THEN 'Ground floor' ELSE NULL END) AS floor_number, \
+                    rm.number AS room_number \
+              FROM complaints c \
+              LEFT JOIN public.platform_users u ON u.id = c.raised_by \
+              LEFT JOIN LATERAL ( \
+                  SELECT r.full_name, r.bed_id \
+                  FROM residents r \
+                  WHERE r.user_id = c.raised_by AND r.org_id = c.org_id AND r.deleted_at IS NULL \
+                  ORDER BY (r.status = 'active') DESC, r.created_at DESC \
+                  LIMIT 1 \
+              ) res ON true \
+              LEFT JOIN beds bd ON bd.id = res.bed_id AND bd.org_id = c.org_id AND bd.deleted_at IS NULL \
+              LEFT JOIN rooms rm ON rm.id = bd.room_id AND rm.org_id = c.org_id AND rm.deleted_at IS NULL \
+              LEFT JOIN floors fl ON fl.id = rm.floor_id AND fl.org_id = c.org_id AND fl.deleted_at IS NULL";
         let rows: Vec<Row> = match role {
-            Role::Owner => {
-                sqlx::query_as(&format!(
-                    "SELECT {cols} FROM complaints WHERE org_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 500"
-                ))
-                .bind(org)
-                .fetch_all(&mut *tx)
-                .await
-                .map_err(map_sqlx)?
-            }
-            Role::Manager => match branch {
+            Role::Owner => match branch {
                 Some(b) => sqlx::query_as(&format!(
-                    "SELECT {cols} FROM complaints WHERE org_id = $1 AND deleted_at IS NULL \
-                     AND is_business_level = false AND branch_id = $2 ORDER BY created_at DESC LIMIT 500"
+                    "{select_clause} WHERE c.org_id = $1 AND c.deleted_at IS NULL AND c.branch_id = $2 ORDER BY c.created_at DESC LIMIT 500"
                 ))
                 .bind(org)
                 .bind(b.as_uuid())
                 .fetch_all(&mut *tx)
                 .await
                 .map_err(map_sqlx)?,
-                None => Vec::new(),
+                None => sqlx::query_as(&format!(
+                    "{select_clause} WHERE c.org_id = $1 AND c.deleted_at IS NULL ORDER BY c.created_at DESC LIMIT 500"
+                ))
+                .bind(org)
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(map_sqlx)?,
+            },
+            Role::Manager => match branch {
+                Some(b) => sqlx::query_as(&format!(
+                    "{select_clause} WHERE c.org_id = $1 AND c.deleted_at IS NULL \
+                     AND c.is_business_level = false AND c.branch_id = $2 ORDER BY c.created_at DESC LIMIT 500"
+                ))
+                .bind(org)
+                .bind(b.as_uuid())
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(map_sqlx)?,
+                None => sqlx::query_as(&format!(
+                    "{select_clause} WHERE c.org_id = $1 AND c.deleted_at IS NULL \
+                     AND c.is_business_level = false ORDER BY c.created_at DESC LIMIT 500"
+                ))
+                .bind(org)
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(map_sqlx)?,
             },
             Role::PlatformOperator | Role::Prospect => {
                 return Err(AppError::Forbidden);
             }
             Role::Tenant => sqlx::query_as(&format!(
-                "SELECT {cols} FROM complaints WHERE org_id = $1 AND deleted_at IS NULL \
-                 AND raised_by = $2 ORDER BY created_at DESC LIMIT 500"
+                "{select_clause} WHERE c.org_id = $1 AND c.deleted_at IS NULL \
+                 AND c.raised_by = $2 ORDER BY c.created_at DESC LIMIT 500"
             ))
             .bind(org)
             .bind(user_id.as_uuid())
